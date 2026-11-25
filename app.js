@@ -34,7 +34,10 @@ const apiOrigin=document.querySelector('meta[name="caleb-api-origin"]')?.content
 const adminOrigin=document.querySelector('meta[name="caleb-admin-origin"]')?.content||'';
 const onPages=Boolean(apiOrigin);
 const staffLogin=adminOrigin?adminOrigin+'/admin-login':'/admin-login';
-const readPath=url=>onPages?'/'+(url.searchParams.get('view')||''):url.pathname.replace(/\/$/,'')||'/';
+const readPath=url=>{
+  const path=onPages?'/'+(url.searchParams.get('view')||''):url.pathname.replace(/\/$/,'')||'/';
+  return path==='/welcome'?'/rides':path;
+};
 const currentPath=()=>readPath(new URL(location.href));
 const pageHref=path=>onPages?(path==='/'?'./':'?view='+encodeURIComponent(path.slice(1))):path;
 const signIn=path=>onPages?staffLogin:'/signin-with-chatgpt?return_to='+encodeURIComponent(path);
@@ -98,7 +101,7 @@ async function load() {
   }
   render();
 }
-const mainNav=[['/rides','本週接送','van'],['/welcome','本週總覽','home'],['/shifts','司機輪班','calendar'],['/safety','駕駛安全','shield']];
+const mainNav=[['/rides','本週接送','van'],['/shifts','司機輪班','calendar'],['/safety','駕駛安全','shield']];
 const adminNav=[['/roster','長輩名冊','people'],['/drivers','司機名單','van'],['/manage','匯入服事表','box'],['/members','管理人員權限','user'],['/intake','接送與招募申請','inbox']];
 const publicNav=[['/about','認識加樂','book'],['/apply','申請接送','van'],['/volunteer','司機報名','user'],['/schedule','每週接送摘要','calendar']];
 const pages=[...mainNav,...adminNav,...publicNav];
@@ -127,39 +130,6 @@ function shell(path,content) {
           `<a href="${esc(data?.logoutUrl||'/signout-with-chatgpt?return_to=%2Fwelcome')}" target="_top" class="button quiet">登出</a>`}</div></details>`}</div>
     </header>${guest?`<nav class="workspace-nav actions" aria-label="福音車功能">${mainNav.map(([href,name,symbol])=>a(name,symbol,href,path===href?'primary':'')).join('')}</nav>`:''}<main${path==='/rides'?' class="rides-main"':''}>${content}</main>
     <footer class="workspace-footer actions">${publicNav.map(([href,name,symbol])=>a(name,symbol,href,path===href?'primary':'quiet')).join('')}</footer></div></div>`;
-}
-function hero() {
-  const w=week();
-  return `<section class="hero soft-hero"><div class="hero-copy"><div class="hero-label">${icon('calendar')}${w?toDate(w.date):'加樂團契'}</div>
-  <h2>陪長輩平安到教會</h2><p>${w?((w.group===null?'依加樂服事表安排':w.group?'本週有小組':'本週無小組')+(w.returnTime?'　・　預計 '+w.returnTime+' 回程':'')):'查看每週接送與回程安排。'}</p>
-  ${a('查看本週接送','arrow','/rides','quiet')}</div></section>`;
-}
-function tripCard(t) {
-  const out=total(t,'out'),back=total(t,'back');
-  const full=t.capacity>0&&Math.max(out,back)>=t.capacity;
-  const status=t.capacity>0&&Math.max(out,back)>t.capacity?badge('超過座位','amber'):t.driverId?(full?badge('座位已滿','purple'):badge('已安排','green')):badge('待排司機','amber');
-  return `<article class="trip-card"><div class="trip-head"><span class="trip-icon">${icon('van')}</span>
-    <h3>${esc(t.name)}</h3>${status}</div><div class="trip-meta">
-    <span>${icon('user')}${esc(driver(t.driverId))}　·　${esc(t.vehicle)}</span>
-    <span>${icon('clock')}${t.start?esc(t.start)+' 首站':'接送時間待確認'}</span></div>
-    <div class="trip-foot"><span>去程 <strong>${out}</strong> 位　回程 <strong>${back}</strong> 位</span>
-    ${b('查看','arrow','trip','quiet',t.id)}</div></article>`;
-}
-function dashboard() {
-  if(publicMode()) return publicRideOverview();
-  const w=week(),list=trips();
-  const out=list.reduce((sum,t)=>sum+total(t,'out'),0),back=list.reduce((sum,t)=>sum+total(t,'back'),0);
-  const pending=w&&!driverMode()?data.state.people.filter(p=>!p.inactive).filter(p=>{
-    const ride=w.rides.find(r=>r.personId===p.id);
-    return !ride||ride.status==='pending'||(ride.status==='confirmed'&&!ride.outTrip&&!ride.backTrip);
-  }).length:0;
-  const missing=list.filter(t=>!t.driverId).length;
-  const stat=(name,symbol,n,unit)=>`<div class="stat"><div class="stat-top"><span class="stat-icon">${icon(symbol)}</span>${name}</div><div class="stat-value">${n}<small>${unit}</small></div></div>`;
-  return heading(driverMode()?'我的接送總覽':'本週接送總覽',driverMode()?'查看你的班次、乘客和接送地點。':'掌握本週的乘客、趟次與司機安排。',selectWeek())+
-    hero()+`<div class="stats">${stat('去程搭乘','people',out,'位')}${stat('回程搭乘','van',back,'位')}${stat('接送趟次','calendar',list.length,'趟')}${stat(driverMode()?'待回報':'待確認／缺班','info',driverMode()?list.filter(t=>t.actualOut===null||t.actualBack===null).length:pending+missing,driverMode()?'趟':'項')}</div>
-    <div class="section-head"><div><h2>本週趟次</h2><p class="muted small">按趟次查看去程上車名單</p></div>${a('查看輪班','arrow','/shifts')}</div>
-    ${list.length?'<div class="trip-grid">'+list.map(tripCard).join('')+'</div>':empty('這一週還沒有安排趟次。')}
-    ${w?.memo?`<div class="panel notice">${icon('info')}<div><h3>本週提醒</h3><p>${esc(w.memo)}</p></div></div>`:''}`;
 }
 // 手機以原頁啟動系統 App，避開內嵌瀏覽器可能攔截的新視窗。
 const touchDevice=()=>matchMedia('(pointer: coarse)').matches||/Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
@@ -283,20 +253,6 @@ function maskedPickupList(stops) {
     </button>
   </section>`;
 }
-function publicRideOverview() {
-  const w=week();
-  const count=w?.totalPeople??0;
-  const status=w?.confirmed?`接送總人數 <strong>${count} 位</strong>`:'搭乘待確認';
-  const cards=trips().map(trip=>{
-    const counts=w?.tripCounts?.find(item=>item.id===trip.id);
-    return `<article class="trip-card"><h3>${esc(trip.name)}</h3>
-    <p class="trip-meta">${esc(driver(trip.driverId))}${trip.start?' · '+esc(trip.start):''}
-    ${w.confirmed&&counts?`<span>去程 ${counts.out} 位 · 回程參考 ${counts.back} 位</span>`:''}</p></article>`;
-  }).join('');
-  return heading('本週總覽',w?toDate(w.date)+'｜'+status:'本週尚未匯入接送安排',a('查看本週接送','van','/rides','primary'))+
-    (cards?`<div class="trip-grid">${cards}</div>`:empty('本週尚無接送趟次。'));
-}
-
 function ridesPage() {
   const w=week(),list=trips();
   if(publicMode()&&(!w||w.date!==data.state.activeDate)) return heading('本週接送','查看本週已確認的接送乘客。')+empty('這一週還沒有接送安排。');
@@ -483,7 +439,6 @@ function intake() {
       <p class="muted small">${esc(m.created_at.slice(0,10))}</p></div>${badge(m.status==='done'?'已處理':'待處理',m.status==='done'?'green':'amber')}
       ${b(m.status==='done'?'重開':'標為完成',null,'intake-status','',m.id)}</div>`).join('')||'<p class="muted">目前沒有申請。</p>'}</div>`:empty('正在讀取申請…'));
 }
-// 團契介紹、申請和接送摘要共用本週總覽的版面。
 function publicContent(path) {
   if(path==='/about') return `<div class="caleb-story">
       <header class="story-heading"><h1>認識加樂</h1><p>我們是為主預備道路，陪長輩回家的幸福運將。</p></header>
@@ -537,12 +492,12 @@ function render() {
   if(!data) {
     const message=loadError?.message||'登入後即可查看你的接送安排。';
     const needsAuth=!loadError||loadError.status===401;
-    app.innerHTML=`<div class="public-shell"><header class="public-nav">${brand()}${a('團契首頁','home','/welcome')}</header>
+    app.innerHTML=`<div class="public-shell"><header class="public-nav">${brand()}${a('團契首頁','home','/')}</header>
       <main><section class="panel sign-in"><h1>福音車同工專區</h1><p>${esc(message)}</p>
       ${needsAuth&&!onPages?`<a class="button primary" href="${signIn(path)}" target="_top">登入同工專區</a>`:b('重新載入',null,'reload','primary')}</section></main></div>`;
     return;
   }
-  const screens={'/':ridesPage,'/welcome':dashboard,'/rides':ridesPage,'/shifts':shifts,'/safety':safety,'/roster':roster,'/drivers':driverRoster,'/manage':manage,'/members':members,'/intake':intake};
+  const screens={'/':ridesPage,'/rides':ridesPage,'/shifts':shifts,'/safety':safety,'/roster':roster,'/drivers':driverRoster,'/manage':manage,'/members':members,'/intake':intake};
   const protectedPage=adminNav.some(row=>row[0]===path);
   if(protectedPage&&!admin()) {
     app.innerHTML=shell(path,heading('管理後台','請使用管理者帳號登入。')+
