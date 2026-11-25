@@ -99,7 +99,7 @@ async function load() {
   render();
 }
 const mainNav=[['/rides','本週接送','van'],['/welcome','本週總覽','home'],['/shifts','司機輪班','calendar'],['/safety','駕駛安全','shield']];
-const adminNav=[['/roster','長輩名冊','people'],['/drivers','司機名單','van'],['/manage','匯入服飾表','box'],['/members','管理人員權限','user'],['/intake','接送與招募申請','inbox']];
+const adminNav=[['/roster','長輩名冊','people'],['/drivers','司機名單','van'],['/manage','匯入服事表','box'],['/members','管理人員權限','user'],['/intake','接送與招募申請','inbox']];
 const publicNav=[['/about','認識加樂','book'],['/apply','申請接送','van'],['/volunteer','司機報名','user'],['/schedule','每週接送摘要','calendar']];
 const pages=[...mainNav,...adminNav,...publicNav];
 function nav(items,path) {
@@ -440,7 +440,7 @@ function driverRoster() {
 }
 function manage() {
   const source=data.state.source;
-  return heading('匯入服飾表','儲存 Google 雲端服事表連結，更新檔案後按「從雲端更新」。')+
+  return heading('匯入服事表','儲存 Google 雲端服事表連結，更新檔案後按「從雲端更新」。')+
     `<section class="panel"><div class="section-head"><div><h2>目前使用的服事表</h2>
       <p class="muted">${source?esc(source.fileName):'尚未匯入'}</p></div>${badge(source?'已同步':'待匯入',source?'green':'amber')}</div>
       ${source?`<p>最新搭乘確認日期　${esc(source.latestDate||'尚未確認')}</p>
