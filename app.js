@@ -391,7 +391,7 @@ function driverRoster() {
     `<div class="table-wrap"><table><thead><tr><th>司機</th><th>狀態</th><th>小組</th><th>電話</th><th>車牌</th><th>車款／型號</th><th>電子郵件</th><th>備註</th></tr></thead><tbody>
     ${drivers.map(d=>`<tr class="${d.inactive?'inactive-rider':''}"><td><strong>${esc(d.name)}</strong></td>
     <td>${d.inactive?badge(d.status||'暫停服事'):badge('現行司機','green')}</td>
-    <td>${esc(d.group||'—')}</td><td>${phoneLink(d.phone,'撥打')||esc(d.phone||'—')}</td>
+    <td>${esc(d.group||'—')}</td><td>${esc(d.phone||'—')}</td>
     <td>${esc(d.plates||'—')}</td><td>${esc(d.model||'—')}</td><td>${esc(d.email||'—')}</td><td>${esc(d.note||'—')}</td></tr>`).join('')}</tbody></table></div>`;
 }
 function manage() {
