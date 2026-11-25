@@ -25,7 +25,7 @@ const icons={
 const icon=name=>'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+icons[name]+'</svg>';
 const esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const app=document.querySelector('#app');
-let data,activeWeek,selectedTrip,toastTimer,loadError,publicWeek,publicSchedule,publicScheduleError,safetyInfo,safetyLoadError,shiftMonth;
+let data,activeWeek,selectedTrip,toastTimer,loadError,safetyInfo,safetyLoadError,shiftMonth;
 let publicWorkspace,guestPickup;
 const labels={admin:'管理員',coordinator:'聯絡同工',driver:'司機'};
 const statuses={confirmed:['已確認','green'],pending:['待確認','amber'],absent:['請假','gray'],self:['自行前往','gray']};
@@ -36,7 +36,7 @@ const onPages=Boolean(apiOrigin);
 const staffLogin=adminOrigin?adminOrigin+'/admin-login':'/admin-login';
 const readPath=url=>{
   const path=onPages?'/'+(url.searchParams.get('view')||''):url.pathname.replace(/\/$/,'')||'/';
-  return path==='/welcome'?'/rides':path;
+  return path==='/welcome'||path==='/schedule'?'/rides':path;
 };
 const currentPath=()=>readPath(new URL(location.href));
 const pageHref=path=>onPages?(path==='/'?'./':'?view='+encodeURIComponent(path.slice(1))):path;
@@ -103,7 +103,7 @@ async function load() {
 }
 const mainNav=[['/rides','本週接送','van'],['/shifts','司機輪班','calendar'],['/safety','駕駛安全','shield']];
 const adminNav=[['/roster','長輩名冊','people'],['/drivers','司機名單','van'],['/manage','匯入服事表','box'],['/members','管理人員權限','user'],['/intake','接送與招募申請','inbox']];
-const publicNav=[['/about','認識加樂','book'],['/apply','申請接送','van'],['/volunteer','司機報名','user'],['/schedule','每週接送摘要','calendar']];
+const publicNav=[['/about','認識加樂','book'],['/apply','申請接送','van'],['/volunteer','司機報名','user']];
 const pages=[...mainNav,...adminNav,...publicNav];
 function nav(items,path) {
   return items.map(([href,name,symbol])=>`<a class="nav-link ${href===path?'active':''}" data-nav href="${pageHref(href)}" ${href===path?'aria-current="page"':''}>${icon(symbol)}${name}</a>`).join('');
@@ -454,33 +454,10 @@ function publicContent(path) {
         <div class="story-player"><video src="${onPages?'./':'/'}caleb-intro.mp4?v=audio2" controls playsinline preload="metadata" aria-labelledby="caleb-video-title"></video></div>
       </section>
     </div>`;
-  if(path==='/schedule'){
-    const weeks=publicSchedule?.weeks||[];
-    const selected=weeks.find(w=>w.date===publicWeek);
-    const picker=weeks.length?`<select class="select-button" id="public-week-picker" aria-label="接送日期">${[...weeks].reverse().map(w=>option(w.date,dateShort(w.date),publicWeek)).join('')}</select>`:'';
-    const trips=selected?.trips.map(t=>`<article class="trip-card"><h3>${esc(t.name)}</h3>
-      <p class="trip-meta">${selected.confirmed?`去程 ${t.out} 位　回程參考 ${t.back} 位`:'搭乘待確認'}</p></article>`).join('');
-    const summary=selected
-      ?`接送總人數 ${selected.confirmed?'<strong>'+selected.totalPeople+' 位</strong>':'待確認'}`
-      :'查看各週的接送趟次與人數。';
-    return heading('每週接送摘要',summary,picker)+
-      (trips?`<div class="trip-grid">${trips}</div>`:empty(publicScheduleError?'暫時無法讀取接送摘要。':publicSchedule?'這一週尚無接送趟次。':'正在讀取接送摘要…'));
-  }
   const ride=path==='/apply';
   return heading(ride?'長輩接送申請':'司機報名',ride?'留下聯絡資訊，同工會與你確認搭乘需求及可安排的車趟。':'留下聯絡資訊，同工會與你確認可服事的時段及駕駛安全講習。')+
     `<section class="panel">${b('填寫表單','arrow','apply','primary',ride?'ride':'driver')}</section>`;
 }
-async function loadPublicSchedule() {
-  if(publicSchedule) return;
-  try {
-    publicSchedule=await request('/api/public-schedule');
-    publicWeek=publicSchedule.latestDate||publicSchedule.weeks.at(-1)?.date;
-  } catch {
-    publicScheduleError=true;
-  }
-  if(showPublicSchedule(currentPath())) render();
-}
-const showPublicSchedule=path=>path==='/schedule';
 const isPickupPath=path=>path==='/'||path==='/rides';
 function render() {
   const path=currentPath();
@@ -532,7 +509,6 @@ function navigate(path) {
   if(currentPath()!==path) history.pushState({},'',pageHref(path));
   render();
   refreshExtra(path);
-  if(showPublicSchedule(path)) loadPublicSchedule();
   window.scrollTo(0,0);
 }
 function showDialog(title,body,submit,label='儲存') {
@@ -676,14 +652,13 @@ app.addEventListener('submit',event=>{
   syncWorkbook(event.target);
 });
 app.addEventListener('change',event=>{
-  if(event.target.id==='public-week-picker') {publicWeek=event.target.value;render();return;}
   if(event.target.id==='week-picker') {
     activeWeek=event.target.value;
     selectedTrip=null;
     render();
   }
 });
-window.addEventListener('popstate',()=>{render();refreshExtra();if(showPublicSchedule(currentPath())) loadPublicSchedule();});
+window.addEventListener('popstate',()=>{render();refreshExtra();});
 if(publicNav.some(([href])=>href===currentPath())) render();
-if(showPublicSchedule(currentPath())) loadPublicSchedule();
+
 load().then(()=>refreshExtra());
