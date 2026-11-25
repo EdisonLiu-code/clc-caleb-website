@@ -116,6 +116,10 @@ h2 { font-weight: 700; }
 .nav-link { border-radius: 11px; }
 .nav-link.active { color: var(--primary); }
 .topbar { background: #fafafc; }
+.crumb { min-width: 0; }
+.crumb-title { min-width: 0; overflow: hidden; text-overflow: ellipsis; font-weight: inherit; }
+.crumb .mobile-menu { flex: none; }
+.top-actions > .button { flex: none; }
 .topbar .top-actions > .button { background: var(--pale); border-color: transparent; color: var(--primary); }
 .topbar .top-actions > .button:hover { background: #e5e0fa; }
 .workspace-nav { padding-top: 14px; padding-bottom: 0; }

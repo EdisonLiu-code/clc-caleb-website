@@ -38,7 +38,6 @@ const readPath=url=>onPages?'/'+(url.searchParams.get('view')||''):url.pathname.
 const currentPath=()=>readPath(new URL(location.href));
 const pageHref=path=>onPages?(path==='/'?'./':'?view='+encodeURIComponent(path.slice(1))):path;
 const signIn=path=>onPages?staffLogin:'/signin-with-chatgpt?return_to='+encodeURIComponent(path);
-const staffLink=()=>`<a href="${esc(staffLogin)}" target="_top">管理者登入</a>`;
 const week=()=>data?.state.weeks.find(w=>w.date===activeWeek);
 const driver=id=>data.state.drivers.find(d=>d.id===id)?.name||'待安排';
 const admin=()=>data?.member.role==='admin';
@@ -100,7 +99,7 @@ async function load() {
   render();
 }
 const mainNav=[['/rides','本週接送','van'],['/welcome','本週總覽','home'],['/shifts','司機輪班','calendar'],['/safety','駕駛安全','shield']];
-const adminNav=[['/roster','長輩名冊','people'],['/drivers','司機名單','van'],['/manage','Excel 資料來源','box'],['/members','人員與權限','user'],['/intake','接送與招募申請','inbox']];
+const adminNav=[['/roster','長輩名冊','people'],['/drivers','司機名單','van'],['/manage','匯入服飾表','box'],['/members','管理人員權限','user'],['/intake','接送與招募申請','inbox']];
 const publicNav=[['/about','認識加樂','book'],['/apply','申請接送','van'],['/volunteer','司機報名','user'],['/schedule','每週接送摘要','calendar']];
 const pages=[...mainNav,...adminNav,...publicNav];
 function nav(items,path) {
@@ -117,19 +116,17 @@ function shell(path,content) {
   const account=data?.member.name||'';
   return `<div class="shell"><aside class="side">${brand()}<nav aria-label="功能選單"><p class="nav-caption">同工專區</p>
     ${nav(mainNav,path)}${admin()?'<p class="nav-caption second">管理後台</p>'+nav(adminNav,path):''}</nav>
-    <div class="side-bottom"><a href="${pageHref('/about')}" data-nav>${icon('external')} 團契介紹</a>
-      ${guest?staffLink():''}</div></aside>
+    <div class="side-bottom"><a href="${pageHref('/about')}" data-nav>${icon('external')} 團契介紹</a></div></aside>
     <div class="workspace"><header class="topbar"><div class="crumb">
-      ${b('','menu','menu','mobile-menu')}<span>福音車事工</span><span>›</span>${title}</div>
+      ${b('','menu','menu','mobile-menu')}<span>福音車事工</span><span>›</span><strong class="crumb-title">${title}</strong></div>
       <div class="top-actions">${a('返回首頁','home','/','primary')}
-        ${guest?'':`<details class="account-details"><summary class="account"><span class="avatar">${esc(account.slice(0,1))}</span><span>${esc(account)} · ${labels[role]}</span></summary>
+        ${guest?`<a class="button" href="${esc(staffLogin)}" target="_top">管理者登入</a>`:`<details class="account-details"><summary class="account"><span class="avatar">${esc(account.slice(0,1))}</span><span>${esc(account)} · ${labels[role]}</span></summary>
         <div class="account-menu">
         ${admin()&&data.teamLink?b('同工共用連結','copy','team-link','quiet'):''}
         ${data?.member.loginProvider==='email'?b('登出','user','admin-logout','quiet'):
           `<a href="${esc(data?.logoutUrl||'/signout-with-chatgpt?return_to=%2Fwelcome')}" target="_top" class="button quiet">登出</a>`}</div></details>`}</div>
     </header>${guest?`<nav class="workspace-nav actions" aria-label="福音車功能">${mainNav.map(([href,name,symbol])=>a(name,symbol,href,path===href?'primary':'')).join('')}</nav>`:''}<main${path==='/rides'?' class="rides-main"':''}>${content}</main>
-    <footer class="workspace-footer actions">${publicNav.map(([href,name,symbol])=>a(name,symbol,href,path===href?'primary':'quiet')).join('')}
-      ${guest?staffLink():''}</footer></div></div>`;
+    <footer class="workspace-footer actions">${publicNav.map(([href,name,symbol])=>a(name,symbol,href,path===href?'primary':'quiet')).join('')}</footer></div></div>`;
 }
 function hero() {
   const w=week();
@@ -443,7 +440,7 @@ function driverRoster() {
 }
 function manage() {
   const source=data.state.source;
-  return heading('Excel 資料來源','儲存 Google 雲端服事表連結，更新檔案後按「從雲端更新」。')+
+  return heading('匯入服飾表','儲存 Google 雲端服事表連結，更新檔案後按「從雲端更新」。')+
     `<section class="panel"><div class="section-head"><div><h2>目前使用的服事表</h2>
       <p class="muted">${source?esc(source.fileName):'尚未匯入'}</p></div>${badge(source?'已同步':'待匯入',source?'green':'amber')}</div>
       ${source?`<p>最新搭乘確認日期　${esc(source.latestDate||'尚未確認')}</p>
@@ -473,7 +470,7 @@ async function syncWorkbook(form) {
 }
 let membersCache=null,intakeCache=null;
 function members() {
-  return heading('人員與權限','管理員可使用此處登記的 Gmail 登入後台。',b('新增帳號','plus','member','primary'))+
+  return heading('管理人員權限','管理員可使用此處登記的 Gmail 登入後台。',b('新增帳號','plus','member','primary'))+
     (membersCache?`<div class="table-wrap"><table><thead><tr><th>姓名</th><th>登入電郵</th><th>角色</th><th>綁定司機</th><th>操作</th></tr></thead><tbody>
     ${membersCache.members.map(m=>`<tr><td>${esc(m.name)}</td><td>${esc(m.email)}</td><td>${badge(labels[m.role],'purple')}</td><td>${m.driver_id?esc(driver(m.driver_id)):'—'}</td>
     <td>${b('編輯','edit','member','',m.email)}${m.email!==membersCache.self?b('移除',null,'remove-member','danger',m.email):''}</td></tr>`).join('')}</tbody></table></div>`:empty('正在讀取同工帳號…'))+
