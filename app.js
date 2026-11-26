@@ -33,7 +33,8 @@ const siteName='CLC 加樂團契';
 const apiOrigin=document.querySelector('meta[name="caleb-api-origin"]')?.content||'';
 const adminOrigin=document.querySelector('meta[name="caleb-admin-origin"]')?.content||'';
 const onPages=Boolean(apiOrigin);
-const staffLogin=adminOrigin?adminOrigin+'/admin-login':'/admin-login';
+const inLineBrowser=/\bLine\//i.test(navigator.userAgent);
+const staffLogin=(adminOrigin||'')+'/admin-login'+(inLineBrowser?'?openExternalBrowser=1':'');
 const readPath=url=>{
   const path=onPages?'/'+(url.searchParams.get('view')||''):url.pathname.replace(/\/$/,'')||'/';
   return path==='/welcome'||path==='/schedule'?'/rides':path;
@@ -257,7 +258,7 @@ function ridesPage() {
   const w=week(),list=trips();
   if(publicMode()&&(!w||w.date!==data.state.activeDate)) return heading('本週接送','查看本週已確認的接送乘客。')+empty('這一週還沒有接送安排。');
   if(!w) return heading('本週接送','查看與確認乘客搭乘狀況。',selectWeek())+empty('目前沒有接送紀錄。');
-  const browserHint=touchDevice()&&(embedded()||/Line\//i.test(navigator.userAgent))
+  const browserHint=touchDevice()&&(embedded()||inLineBrowser)
     ?`<div class="panel small">如果導航或撥號被內建瀏覽器攔截，請用 Safari 或 Chrome 開啟。${embedded()?'<a class="button quiet" href="'+pageHref('/rides')+'" target="_top">開啟完整頁面</a>':''}</div>`:'';
   const t=list.find(item=>item.id===selectedTrip)||(!admin()?list[0]:null);
   const tabs=`<div class="ride-tabs" role="group" aria-label="接送趟次">${admin()?`<button type="button" class="button" data-action="all-rides" aria-pressed="${!t}">搭乘確認</button>`:''}${list.map(item=>`<button type="button" class="button" data-action="trip" data-value="${esc(item.id)}" aria-pressed="${t?.id===item.id}">${esc(item.name)}</button>`).join('')}</div>`;
