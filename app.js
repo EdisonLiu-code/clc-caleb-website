@@ -124,7 +124,7 @@ function shell(path,content) {
     <div class="workspace"><header class="topbar"><div class="crumb">
       ${b('','menu','menu','mobile-menu')}<span>福音車事工</span><span>›</span><strong class="crumb-title">${title}</strong></div>
       <div class="top-actions">${a('返回首頁','home','/','primary')}
-        ${guest?`<a class="button" href="${esc(staffLogin)}" data-popup-login>管理者登入</a>`:`<details class="account-details"><summary class="account"><span class="avatar">${esc(account.slice(0,1))}</span><span>${esc(account)} · ${labels[role]}</span></summary>
+        ${guest?`<a class="button" href="${esc(staffLogin)}" data-popup-login target="${embedded()?'_blank':'_top'}" rel="noopener">管理者登入</a>`:`<details class="account-details"><summary class="account"><span class="avatar">${esc(account.slice(0,1))}</span><span>${esc(account)} · ${labels[role]}</span></summary>
         <div class="account-menu">
         ${admin()&&data.teamLink?b('同工共用連結','copy','team-link','quiet'):''}
         ${data?.member.loginProvider==='email'?b('登出','user','admin-logout','quiet'):
@@ -472,14 +472,14 @@ function render() {
     const needsAuth=!loadError||loadError.status===401;
     app.innerHTML=`<div class="public-shell"><header class="public-nav">${brand()}${a('團契首頁','home','/')}</header>
       <main><section class="panel sign-in"><h1>福音車同工專區</h1><p>${esc(message)}</p>
-      ${needsAuth&&!onPages?`<a class="button primary" href="${signIn(path)}" data-popup-login>登入同工專區</a>`:b('重新載入',null,'reload','primary')}</section></main></div>`;
+      ${needsAuth&&!onPages?`<a class="button primary" href="${signIn(path)}" data-popup-login target="${embedded()?'_blank':'_top'}" rel="noopener">登入同工專區</a>`:b('重新載入',null,'reload','primary')}</section></main></div>`;
     return;
   }
   const screens={'/':ridesPage,'/rides':ridesPage,'/shifts':shifts,'/safety':safety,'/roster':roster,'/drivers':driverRoster,'/manage':manage,'/members':members,'/intake':intake};
   const protectedPage=adminNav.some(row=>row[0]===path);
   if(protectedPage&&!admin()) {
     app.innerHTML=shell(path,heading('管理後台','請使用管理者帳號登入。')+
-      `<a class="button primary" href="${esc(staffLogin)}" data-popup-login>登入後台</a>`);
+      `<a class="button primary" href="${esc(staffLogin)}" data-popup-login target="${embedded()?'_blank':'_top'}" rel="noopener">登入後台</a>`);
     return;
   }
   app.innerHTML=shell(path==='/'?'/rides':path,screens[path]?.()||empty('找不到此頁面。'));
@@ -663,41 +663,33 @@ window.addEventListener('popstate',()=>{render();refreshExtra();});
 if(publicNav.some(([href])=>href===currentPath())) render();
 
 load().then(()=>refreshExtra());
-const allowedAuthOrigins=new Set([
-  'https://clc-dx04.pages.dev',
-  'https://clc-sr-portal.pages.dev',
-  ...(apiOrigin?[new URL(apiOrigin).origin]:[]),
-  ...(adminOrigin?[new URL(adminOrigin).origin]:[]),
-]);
+const staffOrigin=adminOrigin?new URL(adminOrigin).origin:'';
+let loginPopup;
 app.addEventListener('click',event=>{
   const loginLink=event.target.closest('a[data-popup-login]');
-  if(!loginLink||!embedded()||event.metaKey||event.ctrlKey||event.shiftKey||event.altKey||event.button!==0) return;
+  if(!loginLink||!embedded()||inLineBrowser||event.metaKey||event.ctrlKey||event.shiftKey||event.altKey||event.button!==0) return;
   event.preventDefault();
-  const loginUrl=new URL(loginLink.href,location.href);
-  loginUrl.searchParams.set('return_to',location.href);
+  const loginUrl=new URL(loginLink.href);
+  loginUrl.searchParams.set('return_to',location.origin+location.pathname);
   loginUrl.searchParams.set('popup','1');
   const width=520,height=660;
   const left=Math.max(0,Math.round(window.screenX+(window.outerWidth-width)/2));
   const top=Math.max(0,Math.round(window.screenY+(window.outerHeight-height)/2));
-  const popup=window.open(loginUrl.toString(),'clc-caleb-login',`popup=yes,width=${width},height=${height},left=${left},top=${top}`);
-  if(!popup) {
-    window.top.location.href=loginUrl.toString();
-    return;
-  }
-  const timer=setInterval(()=>{
-    if(popup.closed) {
-      clearInterval(timer);
-      load().then(()=>refreshExtra());
-    }
-  },500);
+  loginPopup=window.open(loginUrl,'clc-caleb-login',`popup=yes,width=${width},height=${height},left=${left},top=${top}`);
+  if(!loginPopup) toast('請允許彈出視窗後再點一次「管理者登入」。');
 });
 window.addEventListener('message',event=>{
-  if(!allowedAuthOrigins.has(event.origin)) return;
-  if(event.data?.type==='clc-auth-complete') {
-    if(event.data.redirectUrl) {
-      location.href=event.data.redirectUrl;
-    } else {
-      load().then(()=>refreshExtra());
-    }
-  }
+  if(event.origin!==staffOrigin||!loginPopup||event.source!==loginPopup||
+    event.data?.type!=='clc-auth-complete'||!/^[a-f0-9]{64}$/.test(event.data.code)) return;
+  loginPopup=null;
+  const form=document.createElement('form');
+  form.method='POST';
+  form.action=new URL('/auth/embedded',staffOrigin);
+  const code=document.createElement('input');
+  code.type='hidden';
+  code.name='code';
+  code.value=event.data.code;
+  form.append(code);
+  document.body.append(form);
+  form.submit();
 });
